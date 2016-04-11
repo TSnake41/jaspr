@@ -1,0 +1,106 @@
+JaspR -- Jast Another Software to Pull Rubbish
+
+##########################################################################################################
+
+
+DESCRIPTION :
+
+JaspR is a program which cleans useless data from your system and browsers to free disk space.
+JaspR helps you to wisely delete these datas.
+
+Concretely, JaspR can :
+    • Clean Temporary Files
+    • Clean Log Files
+    • Empty Trash
+    • Clean Thumb Cache
+    • Clean Recent Files List
+    • Clean Old Prefetch's Files
+    • Deactivate Hibernation
+    • Clean Cache (Firefox, Chrome, Edge, Internet Explorer, Safari and Opera)
+    • Clean Cookies (Firefox, Chrome, Edge, Internet Explorer, Safari and Opera)
+    • Clean History (Firefox, Chrome, Edge, Internet Explorer, Safari and Opera)
+
+##########################################################################################################
+
+
+GRAPHICS :
+
+JaspR is a program predominantly programmed in batch (also uses VBScript).
+It also uses an external command : [C#]AgrafV2.exe
+which serves to easily make Graphical User Interfaces
+
+So there's the main window, in which you can select items to remove, or analyse.
+
+And there's also a console behind in which you'll see the working process progress.
+
+##########################################################################################################
+
+
+SOURCE CODE EXAMPLE :
+
+To delete useless files, JaspR proceed like this : 
+FOR EACH FILES IN FOLDERS/SUBFOLDERS DO DELETE AND GET SIZE which is written like this :
+
+----------------------------------CODE SAMPLE-------------------------------------
+					
+for /f %%i in ('dir /s /b /a-d "FOLDER"') do set /a SIZE=%%~zi & del /f /q "%%i"
+
+----------------------------------------------------------------------------------
+
+##########################################################################################################
+
+MOTIVATION :
+
+I've made this software, cause I noticed many times, in different folders a big amount of unused data. Seeing this, I was wondering, there should be an automatised way to delete this bulls***.
+And the answer is now : JaspR.
+
+Well actualy, JaspR is like many other programs such as CCleaner, BleachBit, etc... and that's why I called my software "JaspR" which stands for "Just Another Software to Pull Rubbish".
+
+Question :
+"Is JaspR another tool to free space cleaning pointless data ?" 
+
+Answer :
+"Yes."
+
+Question : 
+"Then why ?"
+
+Answer :
+"To try to develop the 'best', most advanced, and most complex program in this category."
+
+I know I'm really far to get it, but I will try at least to give users a good reason to use JaspR by improving it through forthcoming updates.
+
+##########################################################################################################
+
+
+COMPATIBILITY :
+
+JaspR should be compatible with any Windows Operating System (32 or 64 bits).
+
+Tested on Windows 7 x64 and Windows 10 x64
+
+##########################################################################################################
+
+
+INSTALLATION :
+
+JaspR is extremmely easy to install :
+
+	Just download the Setup (JaspR 1.0 Setup.exe), open it, follow the steps, and TAA-DAM JaspR is installed.
+
+You'll just have to execute it through the desktop's shortcut.
+
+If you want to get rid of JaspR, you'll regret it...
+No seriously, just go to Control Panel --> Softwares --> JaspR --> Uninstall
+or there's an "uninstall.exe" file included in the installation directory.
+
+##########################################################################################################
+
+
+LICENSE : 
+
+Creative Commons : CC-BY-NC
+
+See the License file for more details.
+
+##########################################################################################################
