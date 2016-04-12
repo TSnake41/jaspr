@@ -1,0 +1,21 @@
+-The source code is the "JaspR 1.0.bat" file.
+
+It's a batch file (you must must run it as administrator to use it)
+
+
+
+-"AgrafV2.exe" is a dependency of JaspR : AgrafV2 is used in JaspR to get the GUI.
+
+Without AgrafV2, JaspR will exit immediately / will just not work.
+
+You must have AgrafV2.exe in C:\windows\system32 or in the folder where the "JaspR 1.0.bat" is.
+
+
+
+-"JaspRico.ico" is the icon which will be shown on JaspR GUI.
+
+It's not needed, but will be cleaner.
+
+
+
+NOTE : "AgrafV2.exe" and "JaspRico.ico" should NEVER be renamed.
