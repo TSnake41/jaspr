@@ -1,3 +1,16 @@
+WHAT'S NEW :
+
+-Flexibility improvement : You can now rename the source code file (default is "JaspR [version].bat")
+
+-Now JaspR uses his own subfolder under the local applications data's folder to store source code and icon.
+
+-JaspR checks if AgrafV2 exists, if not, an error message appears.
+
+-JaspR stores user's choices in variables (so remembers which boxes user's ticked)
+
+-Suppression and analysis algorithm improvement
+
+
 -The source code is the "JaspR 1.0.bat" file.
 
 It's a batch file (you must must run it as administrator to use it)

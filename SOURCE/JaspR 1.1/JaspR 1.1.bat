@@ -34,28 +34,63 @@
 @echo off
 ::VERIFICATION DE L'EXECUTION EN TANT QU'ADMINISTRATEUR
 net session >nul 2>nul
-if errorlevel 1 (
-echo msgbox "Vous devez exÈcuter JaspR en tant qu'administrateur !", 16+vbokonly+vbSystemModal, "JaspR Error" >"%tmp%\adminRor.vbs"
-"%tmp%\adminRor.vbs"
-del /f /q "%tmp%\adminRor.vbs" >nul 2>nul
-exit /B
-)
+	if errorlevel 1 (
+		echo msgbox "Vous devez exÈcuter JaspR en tant qu'administrateur !", 16+vbokonly+vbSystemModal, "JaspR Error" >"%tmp%\adminRor.vbs"
+		"%tmp%\adminRor.vbs"
+		del /f /q "%tmp%\adminRor.vbs" >nul 2>nul
+		exit /B
+	)
+
 ::PARAMETRES DE LA CONSOLE
 title JaspR
 mode con cols=66 lines=13
 echo Initialisation de JaspR, veuillez patienter...
+
+::CREATION DU DOSSIER LOCAL JASPR
+set jpath=%localappdata%\JaspR
+	if not exist "%jpath%" md "%jpath%"
+
 ::COPIE DE AGRAFV2 DANS SYSTEM32 S'IL N'EXISTE PAS
-if not exist "%windir%\system32\AgrafV2.exe" if exist "%~dp0\AgrafV2.exe" copy "%~dp0\AgrafV2.exe" "%windir%\system32\" /y >nul 2>nul
-if not exist "%windir%\system32\JaspRico.ico" if exist "%~dp0\JaspRico.ico" copy "%~dp0\JaspRico.ico" "%windir%\system32\" /y >nul 2>nul
+	if not exist "%windir%\system32\AgrafV2.exe" (
+		if exist "%~dp0\AgrafV2.exe" (
+			copy "%~dp0\AgrafV2.exe" "%windir%\system32\" /y >nul 2>nul
+				if not errorlevel 0 (
+					echo msgbox "AgrafV2 est introuvable, JaspR a besoin d'AgrafV2.", 16+vbokonly+vbSystemModal, "JaspR Error" >"%tmp%\agrafRor.vbs"
+					"%tmp%\agrafRor.vbs"
+					del /f /q "%tmp%\agrafRor.vbs" >nul 2>nul
+					exit /B
+				)
+			
+		)
+	)
+
+	if not exist "%jpath%\JaspRico.ico" (
+		if exist "%~dp0\JaspRico.ico" (
+			copy "%~dp0\JaspRico.ico" "%jpath%" /y >nul 2>nul
+		)
+	)
+
 ::VARIABLE DU DOSSIER DES UTILISATEURS
 for /f "tokens=2-3 delims=\" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders" ^| Find /i "Common AppData"') do set CAD=%systemdrive%\%%a
 	if not "%CAD%"=="%systemdrive%\Documents and Settings" set CAD=%systemdrive%\Users
+	
 ::DEFINITION DES CONSTANTES
-set cdir="%~0"
-for /f "tokens=*" %%i in ('dir /s /b /a-d "%tmp%\JaspR.bat"') do if exist "%%i" set cdir="%%i"
-copy /y %cdir% "%localappdata%" >nul 2>nul
-set cdir="%localappdata%\JaspR.bat"
-)
+set jext=%~x0
+set jname=%~n0
+set jfullpath=%~f0
+	if "%jext%"==".exe" (
+		if exist "%tmp%\%jname%.bat" (
+			set jfullpath="%tmp%\%jname%.bat"
+		) else (
+			echo msgbox "Impossible de trouver le code source !", 16+vbokonly+vbSystemModal, "JaspR Error" >"%tmp%\tmpsrcRor.vbs"
+			"%tmp%\tmpsrcRor.vbs"
+			del /f /q "%tmp%\tmpsrcRor.vbs" >nul 2>nul
+			exit /B
+		)
+	)
+copy /y "%jfullpath%" "%jpath%" >nul 2>nul
+set jfullpath=%localappdata%\JaspR\%jname%.bat
+
 set localchromedir=%localappdata%\Google\Chrome\User Data
 set localfirefoxdir=%localappdata%\Mozilla\Firefox\Profiles
 set roamingfirefoxdir=%appdata%\Mozilla\Firefox\Profiles
@@ -68,6 +103,22 @@ set localIEdir=%localappdata%\Microsoft\Intern~1
 set localhistoryIEdir=%localappdata%\Microsoft\Windows\History
 set localtempIEdir=%localappdata%\Microsoft\Windows\Tempor~1
 set roamingcookiesIEdir=%appdata%\Microsoft\Windows\Cookies
+set tempbool=TRUE
+set trashbool=TRUE
+set recentbool=TRUE
+set winlogbool=TRUE
+set thumbbool=TRUE
+set prefetchbool=TRUE
+set hiberbool=FALSE
+set nonavbool=FALSE
+set yesnavbool=TRUE
+set firefoxbool=FALSE
+set chromebool=FALSE
+set edgebool=FALSE
+set iexplorebool=FALSE
+set safaribool=FALSE
+set operabool=FALSE
+
 
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::PROGRAMME:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -88,7 +139,7 @@ echo.
 echo.
 echo.
 ::CREATION DU RAPPORT (VIDE)
-copy nul %tmp%\rapport.tmp /y >nul 2>nul
+copy nul "%jpath%\JaspR.log" /y >nul 2>nul
 ::REMISE A ZERO DE TOUTES LES VARIABLES
 set "tempfiles"==""
 set /a cl_temp_size=0
@@ -123,10 +174,10 @@ set "analyse"==""
 set "confirm_clean"==""
 
 ::APPEL DE LA GUI MENU
-if exist "%windir%\system32\JaspRico.ico" (
-call :resultgui %cdir% #cl_mainwi
+if exist "%jpath%\JaspRico.ico" (
+call :resultgui "%jfullpath%" #cl_mainwi
 ) else (
-call :resultgui %cdir% #cl_main
+call :resultgui "%jfullpath%" #cl_main
 )
 
 ::PROGRESSBAR INITIALE SUR LA CONSOLE
@@ -145,18 +196,22 @@ echo       ¿ƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒŸ
 echo.
 ::CONDITIONS ET FONCTIONS A APPELER
 	if %confirm_clean% equ 1 (
-		if %tempfiles% equ 1 call :tempclean
-		if %emptytrash% equ 1 call :trashclean
-		if %recentfiles% equ 1 call :recentfileslistclean
-		if %logwindows% equ 1 call :logwindowsclean
-		if %thumbcache% equ 1 call :thumbcacheclean
-		if %prefetch% equ 1 call :prefetchclean
+		if %tempfiles% equ 1 ( set tempbool=TRUE & call :tempclean ) else ( set tempbool=FALSE )
+		if %emptytrash% equ 1 ( set trashbool=TRUE & call :trashclean ) else ( set trashbool=FALSE )
+		if %recentfiles% equ 1 ( set recentbool=TRUE & call :recentfileslistclean ) else ( set recentbool=FALSE )
+		if %logwindows% equ 1 ( set winlogbool=TRUE & call :logwindowsclean ) else ( set winlogbool=FALSE )
+		if %thumbcache% equ 1 ( set thumbbool=TRUE & call :thumbcacheclean ) else ( set thumbbool=FALSE )
+		if %prefetch% equ 1 ( set prefetchbool=TRUE & call :prefetchclean ) else ( set prefetchbool=FALSE )
 		if %hiberstate% equ 1 (
+			set hiberbool=TRUE
 			call :hiberoff
 		) else (
+			set hiberbool=FALSE
 			if not exist "%systemdrive%\hiberfil.sys" powercfg /h on >nul 2>nul
 		)
 		if %no_clean_nav% equ 1 (
+			set nonavbool=TRUE
+			set yesnavbool=FALSE
 			set "cl_firefox"==""
 			set "cl_chrome"==""
 			set "cl_edge"==""
@@ -164,27 +219,32 @@ echo.
 			set "cl_safari"==""
 			set "cl_opera"==""
 		) else (
-			if %cl_firefox% equ 1 call :cl_firefox
-			if %cl_chrome% equ 1 call :cl_chrome
-			if %cl_edge% equ 1 call :cl_edge
-			if %cl_iexplore% equ 1 call :cl_iexplore
-			if %cl_safari% equ 1 call :cl_safari
-			if %cl_opera% equ 1 call :cl_opera
+			set nonavbool=FALSE
+			set yesnavbool=TRUE
+			if %cl_firefox% equ 1 ( set firefoxbool=TRUE & call :cl_firefox ) else ( set firefoxbool=FALSE )
+			if %cl_chrome% equ 1 ( set chromebool=TRUE & call :cl_chrome ) else ( set chromebool=FALSE )
+			if %cl_edge% equ 1 ( set edgebool=TRUE & call :cl_edge ) else ( set edgebool=FALSE )
+			if %cl_iexplore% equ 1 ( set iexplorebool=TRUE & call :cl_iexplore ) else ( set iexplorebool=FALSE )
+			if %cl_safari% equ 1 ( set safaribool=TRUE & call :cl_safari ) else ( set safaribool=FALSE )
+			if %cl_opera% equ 1 ( set operabool=TRUE & call :cl_opera ) else ( set operabool=FALSE )
 		)
 	)
 	if %analyse% equ 1 (
-		if %tempfiles% equ 1 call :tempclean
-		if %emptytrash% equ 1 call :trashclean
-		if %recentfiles% equ 1 call :recentfileslistclean
-		if %logwindows% equ 1 call :logwindowsclean
-		if %thumbcache% equ 1 call :thumbcacheclean
-		if %prefetch% equ 1 call :prefetchclean
+		if %tempfiles% equ 1 ( set tempbool=TRUE & call :tempclean ) else ( set tempbool=FALSE )
+		if %emptytrash% equ 1 ( set trashbool=TRUE & call :trashclean ) else ( set trashbool=FALSE )
+		if %recentfiles% equ 1 ( set recentbool=TRUE & call :recentfileslistclean ) else ( set recentbool=FALSE )
+		if %logwindows% equ 1 ( set winlogbool=TRUE & call :logwindowsclean ) else ( set winlogbool=FALSE )
+		if %thumbcache% equ 1 ( set thumbbool=TRUE & call :thumbcacheclean ) else ( set thumbbool=FALSE )
+		if %prefetch% equ 1 ( set prefetchbool=TRUE & call :prefetchclean ) else ( set prefetchbool=FALSE )
 		if %hiberstate% equ 1 (
+			set hiberbool=TRUE
 			call :hiberoff
 		) else (
-			if not exist "%systemdrive%\hiberfil.sys" powercfg /h on >nul 2>nul
+			set hiberbool=FALSE
 		)
 		if %no_clean_nav% equ 1 (
+			set nonavbool=TRUE
+			set yesnavbool=FALSE
 			set "cl_firefox"==""
 			set "cl_chrome"==""
 			set "cl_edge"==""
@@ -192,24 +252,26 @@ echo.
 			set "cl_safari"==""
 			set "cl_opera"==""
 		) else (
-			if %cl_firefox% equ 1 call :cl_firefox
-			if %cl_chrome% equ 1 call :cl_chrome
-			if %cl_edge% equ 1 call :cl_edge
-			if %cl_iexplore% equ 1 call :cl_iexplore
-			if %cl_safari% equ 1 call :cl_safari
-			if %cl_opera% equ 1 call :cl_opera
+			set nonavbool=FALSE
+			set yesnavbool=TRUE
+			if %cl_firefox% equ 1 ( set firefoxbool=TRUE & call :cl_firefox ) else ( set firefoxbool=FALSE )
+			if %cl_chrome% equ 1 ( set chromebool=TRUE & call :cl_chrome ) else ( set chromebool=FALSE )
+			if %cl_edge% equ 1 ( set edgebool=TRUE & call :cl_edge ) else ( set edgebool=FALSE )
+			if %cl_iexplore% equ 1 ( set iexplorebool=TRUE & call :cl_iexplore ) else ( set iexplorebool=FALSE )
+			if %cl_safari% equ 1 ( set safaribool=TRUE & call :cl_safari ) else ( set safaribool=FALSE )
+			if %cl_opera% equ 1 ( set operabool=TRUE & call :cl_opera ) else ( set operabool=FALSE )
 		)
 	)
 	if %back% equ 1 (
-		if exist "%tmp%\rapport.tmp" del "%tmp%\rapport.tmp" /f /q >nul 2>nul
-		if exist %cdir% del /f /q %cdir% >nul 2>nul
+		if exist "%jpath%\JaspR.log" del "%jpath%\JaspR.log" /f /q >nul 2>nul
+		if exist "%jfullpath%" del /f /q "%jfullpath%" >nul 2>nul
 		exit /B
 	)
 	if %back% equ 0 (
 		if %confirm_clean% equ 0 (
 			if %analyse% equ 0 (
-				if exist "%tmp%\rapport.tmp" del "%tmp%\rapport.tmp" /f /q >nul 2>nul
-				if exist %cdir% del /f /q %cdir% >nul 2>nul
+				if exist "%jpath%\JaspR.log" del "%jpath%\JaspR.log" /f /q >nul 2>nul
+				if exist "%jfullpath%" del /f /q "%jfullpath%" >nul 2>nul
 				exit /B
 			)
 		)
@@ -234,16 +296,16 @@ echo.
 ::INSCRIPTION DE LA TAILLE TOTALE DANS LE RAPPORT
 	if not %ttlclnsz% gtr 0 (
 		if not %analyse% equ 1 (
-			echo Aucune donnÈe n'a ÈtÈ effacÈe ! >>"%tmp%\rapport.tmp"
+			echo Aucune donnÈe n'a ÈtÈ effacÈe ! >>"%jpath%\JaspR.log"
 		) else (
-			echo Aucune donnÈe ‡ supprimer ! >>"%tmp%\rapport.tmp"
+			echo Aucune donnÈe ‡ supprimer ! >>"%jpath%\JaspR.log"
 		)
 	) else (
-		echo.>>"%tmp%\rapport.tmp"
+		echo.>>"%jpath%\JaspR.log"
 			if not %analyse% equ 1 (
-				echo Environ %ttlclnsz% Mo supprimÈ^(s^). >>"%tmp%\rapport.tmp"
+				echo Environ %ttlclnsz% Mo supprimÈ^(s^). >>"%jpath%\JaspR.log"
 			) else (
-				echo Environ %ttlclnsz% Mo ‡ supprimer. >>"%tmp%\rapport.tmp"
+				echo Environ %ttlclnsz% Mo ‡ supprimer. >>"%jpath%\JaspR.log"
 			)
 	)
 ::CREATION DU SCRIPT DE LECTURE DU RAPPORT
@@ -252,7 +314,7 @@ echo Dim objTextFile >>"%tmp%\clndsz.vbs"
 echo Dim strText >>"%tmp%\clndsz.vbs"
 echo on error resume next >>"%tmp%\clndsz.vbs"
 echo Set objFSO = CreateObject("Scripting.FileSystemObject") >>"%tmp%\clndsz.vbs"
-echo Set objTextFile = objFSO.OpenTextFile("%tmp%\rapport.tmp", 1) >>"%tmp%\clndsz.vbs"
+echo Set objTextFile = objFSO.OpenTextFile("%jpath%\JaspR.log", 1) >>"%tmp%\clndsz.vbs"
 echo strText = objTextFile.ReadAll >>"%tmp%\clndsz.vbs"
 echo objTextFile.Close >>"%tmp%\clndsz.vbs"
 echo msgbox strText, 64+vbokonly+vbSystemModal, "JaspR Rapport" >>"%tmp%\clndsz.vbs"
@@ -260,7 +322,7 @@ echo msgbox strText, 64+vbokonly+vbSystemModal, "JaspR Rapport" >>"%tmp%\clndsz.
 "%tmp%\clndsz.vbs"
 ::SUPPRESSION DU SCRIPT ET DU RAPPORT
 del /f /q "%tmp%\clndsz.vbs" >nul 2>nul
-del /f /q "%tmp%\rapport.tmp" >nul 2>nul
+del /f /q "%jpath%\JaspR.log" >nul 2>nul
 ::RETOUR AU DEBUT DU PROGRAMME
 goto start_cl_tool
 
@@ -279,74 +341,108 @@ goto:eof
 ::FONCTION DE NETTOYAGE DES FICHIERS TEMPORAIRES
 :tempclean
 for /f "tokens=*" %%i in ('dir /s /b /a-d "%windir%\temp" 2^>nul') do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del "%%i" /f /q >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
-	
+)
+
 if not %analyse% equ 1 for /f "tokens=*" %%i in ('dir /s /b /ad "%windir%\temp" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
 
 for /f "tokens=*" %%i in ('dir /s /b /a-d "%windir%\System32\config\systemprofile\Local Settings\Temp" 2^>nul') do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
-	
+)
+
 if not %analyse% equ 1 for /f "tokens=*" %%i in ('dir /s /b /ad "%windir%\System32\config\systemprofile\Local Settings\Temp" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
 
-for /f "tokens=*" %%i in ('dir /b /ad "%CAD%"') do for /f "tokens=*" %%j in ('dir /s /b /a-d "%CAD%\%%i\LOCALS~1\Temp" 2^>nul') do if exist "%%j" (
-	if %%~zj neq 0 set /a ttlclnsz=ttlclnsz+%%~zj
-	if not %analyse% equ 1 (
-		echo "%%j" |findstr JaspR >nul 2>nul & if not errorlevel 0 del /f /q "%%j" >nul 2>nul
-			if exist "%%j" (
-				if defined ttlclnsz (
-					if %%~zj neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zj
-					)
+::for /f "tokens=*" %%i in ('dir /b /ad "%CAD%"') do for /f "tokens=*" %%j in ('dir /s /b /a-d "%CAD%\%%i\LOCALS~1\Temp" 2^>nul') do if exist "%%j" (
+::	2>nul (
+::	>>"%%j" (call )
+::	) && (
+::		if %%~zj neq 0 set /a ttlclnsz=ttlclnsz+%%~zj
+::			if not %analyse% equ 1 (
+::				del "%%j" /f /q >nul 2>nul
+::					if exist "%%j" (
+::						if defined ttlclnsz (
+::							if %%~zj neq 0 (
+::								set /a ttlclnsz=ttlclnsz-%%~zj
+::							)
+::						)
+::					)
+::			)
+::		)
+::	) || (ping 127.0.0.1 /n 1 >nul 2>nul)
+::
+::	if not %analyse% equ 1 for /f "tokens=*" %%i in ('dir /b /ad "%CAD%"') do for /f "tokens=*" %%j in ('dir /s /b /ad "%CAD%\%%i\LOCALS~1\Temp" 2^>nul') do if exist "%%j" rd /q "%%i" >nul 2>nul
+
+for /f "tokens=*" %%i in ('dir /s /b /a-d "%localappdata%\temp" 2^>nul') do if exist "%%i" (
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
-	
-if not %analyse% equ 1 for /f "tokens=*" %%i in ('dir /b /ad "%CAD%"') do for /f "tokens=*" %%j in ('dir /s /b /ad "%CAD%\%%i\LOCALS~1\Temp" 2^>nul') do if exist "%%j" rd /q "%%i" >nul 2>nul
+)
 
-for /f "tokens=*" %%i in ('dir /s /b /a-d "%localappdata%\temp" 2^>nul') do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		echo "%%j" |findstr JaspR >nul 2>nul & if not errorlevel 0 del /f /q "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
-				)
-			)
-		)
-	)	
-		
 if not %analyse% equ 1 for /f "tokens=*" %%i in ('dir /s /b /ad "%localappdata%\temp" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
 
 set "cl_temp_size"==""
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
 set /a cl_temp_size=%ttlclnsz%/1024/1024
 	if %cl_temp_size% gtr 0 (
-		echo Fichiers Temporaires : %cl_temp_size% Mo >>"%tmp%\rapport.tmp"
+		echo Fichiers Temporaires : %cl_temp_size% Mo >>"%jpath%\JaspR.log"
 	)
 if %yes_clean_nav% equ 1 (
 cls
@@ -382,39 +478,59 @@ goto:eof
 ::FONCTION DE NETTOYAGE DES FICHIERS JOURNAL WINDOWS
 :logwindowsclean
 for /f "tokens=*" %%i in ('dir /s /b /a-d %windir%\*.log 2^>nul') do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 	
 for /f "tokens=*" %%i in ('dir /s /b /a-d "%allusersprofile%\Microsoft\Windows\WER\*.wer" 2^>nul') do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 	
 set "cl_winlog_size"==""
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
 if "%cl_temp_size%"=="" set /a cl_temp_size=0
 set /a cl_winlog_size=(%ttlclnsz%-%cl_temp_size%*1024*1024)/1024/1024
 	if %cl_winlog_size% gtr 0 (
-		echo Fichiers Journal : %cl_winlog_size% Mo >>"%tmp%\rapport.tmp"
+		echo Fichiers Journal : %cl_winlog_size% Mo >>"%jpath%\JaspR.log"
 	)
 if %yes_clean_nav% equ 1 (
 cls
@@ -450,32 +566,52 @@ goto:eof
 ::FONCTION DE NETTOYAGE DU CACHE DES VIGNETTES
 :thumbcacheclean
 for /f "tokens=*" %%i in ('dir /s /b /a-d "%localappdata%\microsoft\windows\explorer\thumbcache*.db" 2^>nul') do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 	
 for /f "tokens=*" %%i in ('dir /s /b /a-d "%localappdata%\Microsoft\Windows\Explorer\ThumbCacheToDelete" 2^>nul') do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 	
 set "cl_thumb_size"==""
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
@@ -483,7 +619,7 @@ if "%cl_temp_size%"=="" set /a cl_temp_size=0
 if "%cl_winlog_size%"=="" set /a cl_winlog_size=0
 set /a cl_thumb_size=(%ttlclnsz%-%cl_temp_size%*1024*1024-%cl_winlog_size%*1024*1024)/1024/1024
 	if %cl_thumb_size% gtr 0 (
-		echo Cache des Vignettes : %cl_thumb_size% Mo >>"%tmp%\rapport.tmp"
+		echo Cache des Vignettes : %cl_thumb_size% Mo >>"%jpath%\JaspR.log"
 	)
 if %yes_clean_nav% equ 1 (
 cls
@@ -519,18 +655,28 @@ goto:eof
 ::FONCTION DE NETTOYAGE DE LA CORBEILLE
 :trashclean
 for /f "tokens=*" %%i in ('dir /s /b /a-d %systemdrive%\$Recycle.Bin 2^>nul') do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 
 set "cl_trash_size"==""
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
@@ -539,7 +685,7 @@ if "%cl_winlog_size%"=="" set /a cl_winlog_size=0
 if "%cl_thumb_size%"=="" set /a cl_thumb_size=0
 set /a cl_trash_size=(%ttlclnsz%-%cl_temp_size%*1024*1024-%cl_winlog_size%*1024*1024-%cl_thumb_size%*1024*1024)/1024/1024
 	if %cl_trash_size% gtr 0 (
-		echo Corbeille : %cl_trash_size% Mo >>"%tmp%\rapport.tmp"
+		echo Corbeille : %cl_trash_size% Mo >>"%jpath%\JaspR.log"
 	)
 if %yes_clean_nav% equ 1 (
 cls
@@ -575,46 +721,78 @@ goto:eof
 ::FONCTION DE NETTOYAGE DE LA LISTE DES FICHIERS RECENTS
 :recentfileslistclean
 for /f "tokens=*" %%i in ('dir /s /b /a-d "%appdata%\microsoft\windows\recent" 2^>nul') do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 
-for /f "tokens=*" %%i in ('dir /b /a-d "%windir%\System32\config\systemprofile\Recent\*.*" 2^>nul') do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q  "%windir%\System32\config\systemprofile\Recent\%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+for /f "tokens=*" %%i in ('dir /s /b /a-d "%windir%\System32\config\systemprofile\Recent" 2^>nul') do if exist "%%i" (
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 
-for /f "tokens=*" %%i in ('dir /b /ad "%CAD%"') do for /f "tokens=*" %%j in ('dir /b "%CAD%\%%i\Recent\*.*" 2^>nul') do if exist "%CAD%\%%i\Recent\%%j" (
-	if %%~zj neq 0 set /a ttlclnsz=ttlclnsz+%%~zj
-	if not %analyse% equ 1 (
-		del /f /q "%CAD%\%%i\Recent\%%j" >nul 2>nul
-			if exist "%CAD%\%%i\Recent\%%j" (
-				if defined ttlclnsz (
-					if %%~zj neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zj
-					)
+for /f "tokens=*" %%i in ('dir /b /ad "%CAD%"') do for /f "tokens=*" %%j in ('dir /b /s /a-d "%CAD%\%%i\Recent" 2^>nul') do if exist "%%j" (
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%j" (call )
+		) && (
+			if %%~zj neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zj
+			)
+		)
+	) else (
+		if %%~zj neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zj
+		)
+		del "%%j" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%j" (
+			if defined ttlclnsz (
+				if %%~zj neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zj
 				)
 			)
 		)
 	)
+)
+
+if not %analyse% equ 1 for /f "tokens=*" %%i in ('dir /b /ad "%CAD%"') do for /f "tokens=*" %%j in ('dir /b /s /ad "%CAD%\%%i\Recent" 2^>nul') do if exist "%%j" rd /q "%%j" >nul 2>nul
 
 set "cl_recent_size"==""
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
@@ -624,7 +802,7 @@ if "%cl_thumb_size%"=="" set /a cl_thumb_size=0
 if "%cl_trash_size%"=="" set /a cl_trash_size=0
 set /a cl_recent_size=(%ttlclnsz%-%cl_temp_size%*1024*1024-%cl_winlog_size%*1024*1024-%cl_thumb_size%*1024*1024-%cl_trash_size%*1024*1024)/1024/1024
 	if %cl_recent_size% gtr 0 (
-		echo Liste des Fichiers RÈcents : %cl_recent_size% Mo >>"%tmp%\rapport.tmp"
+		echo Liste des Fichiers RÈcents : %cl_recent_size% Mo >>"%jpath%\JaspR.log"
 	)
 if %yes_clean_nav% equ 1 (
 cls
@@ -659,19 +837,31 @@ goto:eof
 
 ::FONCTION DE NETTOYAGE DES VIEILLES DONNEES DU PREFETCH
 :prefetchclean
-for /f "tokens=*" %%i in ('dir /s /b "%windir%\prefetch\" 2^>nul') do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q /s "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+for /f "tokens=*" %%i in ('dir /s /b /a-d "%windir%\prefetch" 2^>nul') do if exist "%%i" (
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
+
+for /f "tokens=*" %%i in ('dir /s /b /ad "%windir%\prefetch" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
 
 set "cl_prefetch_size"==""
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
@@ -682,7 +872,7 @@ if "%cl_trash_size%"=="" set /a cl_trash_size=0
 if "%cl_recent_size%"=="" set /a cl_recent_size=0
 set /a cl_prefetch_size=(%ttlclnsz%-%cl_temp_size%*1024*1024-%cl_winlog_size%*1024*1024-%cl_thumb_size%*1024*1024-%cl_trash_size%*1024*1024-%cl_recent_size%*1024*1024)/1024/1024
 	if %cl_prefetch_size% gtr 0 (
-		echo Vieilles DonnÈes du Prefetch : %cl_prefetch_size% Mo >>"%tmp%\rapport.tmp"
+		echo Vieilles DonnÈes du Prefetch : %cl_prefetch_size% Mo >>"%jpath%\JaspR.log"
 	)
 if %yes_clean_nav% equ 1 (
 cls
@@ -745,7 +935,7 @@ powercfg /h off >nul 2>nul
 
 set /a hiberfilsizemo=%hiberfilsize%/1024/1024
 	if defined hiberfilsize (
-		if %hiberfilsize% gtr 0 echo Supp. Mise en Veille ProlongÈe : %hiberfilsizemo% Mo >>"%tmp%\rapport.tmp"
+		if %hiberfilsize% gtr 0 echo Supp. Mise en Veille ProlongÈe : %hiberfilsizemo% Mo >>"%jpath%\JaspR.log"
 	)
 if %yes_clean_nav% equ 1 (
 cls
@@ -785,32 +975,52 @@ tasklist |find "firefox.exe" >nul 2>nul & if not errorlevel 1 goto firefoxopened
 :cl_firefoxkd
 
 for /f "tokens=*" %%i in ('dir /s /b /a-d "%localfirefoxdir%" 2^>nul') do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 	
 for /f "tokens=*" %%i in ('dir /s /b /a-d "%roamingfirefoxdir%\*.sqlite" 2^>nul') do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q /s "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 
 set "cl_firefox_size"==""
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
@@ -823,7 +1033,7 @@ if "%cl_prefetch_size%"=="" set /a cl_prefetch_size=0
 if "%hiberfilsize%"=="" set /a hiberfilsize=0
 set /a cl_firefox_size=(%ttlclnsz%-%cl_temp_size%*1024*1024-%cl_winlog_size%*1024*1024-%cl_thumb_size%*1024*1024-%cl_trash_size%*1024*1024-%cl_recent_size%*1024*1024-%cl_prefetch_size%*1024*1024-%hiberfilsize%)/1024/1024
 	if %cl_firefox_size% gtr 0 (
-		echo Firefox : %cl_firefox_size% Mo >>"%tmp%\rapport.tmp"
+		echo Firefox : %cl_firefox_size% Mo >>"%jpath%\JaspR.log"
 	)
 	
 cls
@@ -845,10 +1055,10 @@ goto:eof
 :firefoxopened
 set "backfirefox"==""
 set "cl_close"==""
-if exist "%windir%\system32\JaspRico.ico" (
-call :resultgui %cdir% #confirmkillfirefoxwi
+if exist "%jpath%\JaspRico.ico" (
+call :resultgui "%jfullpath%" #confirmkillfirefoxwi
 ) else (
-call :resultgui %cdir% #confirmkillfirefox
+call :resultgui "%jfullpath%" #confirmkillfirefox
 )
 	if %cl_close% equ 1 taskkill /f /im firefox.exe >nul 2>nul
 goto cl_firefoxkd
@@ -860,18 +1070,28 @@ tasklist |find "chrome.exe" >nul 2>nul & if not errorlevel 1 goto chromeopened
 :cl_chromekd
 
 for /f "tokens=*" %%i in ('dir /s /b /a-d "%localchromedir%" 2^>nul') do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q /s "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 
 set "cl_chrome_size"==""
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
@@ -885,7 +1105,7 @@ if "%hiberfilsize%"=="" set /a hiberfilsize=0
 if "%cl_firefox_size%"=="" set /a cl_firefox_size=0
 set /a cl_chrome_size=(%ttlclnsz%-%cl_temp_size%*1024*1024-%cl_winlog_size%*1024*1024-%cl_thumb_size%*1024*1024-%cl_trash_size%*1024*1024-%cl_recent_size%*1024*1024-%cl_prefetch_size%*1024*1024-%hiberfilsize%-%cl_firefox_size%*1024*1024)/1024/1024
 	if %cl_chrome_size% gtr 0 (
-		echo Google Chrome : %cl_chrome_size% Mo >>"%tmp%\rapport.tmp"
+		echo Google Chrome : %cl_chrome_size% Mo >>"%jpath%\JaspR.log"
 	)
 
 cls
@@ -907,10 +1127,10 @@ goto:eof
 :chromeopened
 set "backchrome"==""
 set "cl_close"==""
-if exist "%windir%\system32\JaspRico.ico" (
-call :resultgui %cdir% #confirmkillchromewi
+if exist "%jpath%\JaspRico.ico" (
+call :resultgui "%jfullpath%" #confirmkillchromewi
 ) else (
-call :resultgui %cdir% #confirmkillchrome
+call :resultgui "%jfullpath%" #confirmkillchrome
 )
 	if %cl_close% equ 1 taskkill /f /im chrome.exe >nul 2>nul
 goto cl_chromekd
@@ -922,18 +1142,28 @@ tasklist |find "MicrosoftEdge.exe" || tasklist |find "MicrosoftEdgeCP.exe" >nul 
 :cl_edgekd
 
 for /f "tokens=*" %%i in ('dir /b /ad "%localappdata%\Packages\Microsoft.MicrosoftEdge*" 2^>nul') do for /f "tokens=*" %%j in ('dir /s /a-d /b "%localappdata%\Packages\%%i\AC" 2^>nul') do if exist "%%j" (
-	if %%~zj neq 0 set /a ttlclnsz=ttlclnsz+%%~zj
-	if not %analyse% equ 1 (
-		del /f /q "%%j" >nul 2>nul
-			if exist "%%j" (
-				if defined ttlclnsz (
-					if %%~zj neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zj
-					)
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 	
 set "cl_edge_size"==""
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
@@ -948,7 +1178,7 @@ if "%cl_firefox_size%"=="" set /a cl_firefox_size=0
 if "%cl_chrome_size%"=="" set /a cl_chrome_size=0
 set /a cl_edge_size=(%ttlclnsz%-%cl_temp_size%*1024*1024-%cl_winlog_size%*1024*1024-%cl_thumb_size%*1024*1024-%cl_trash_size%*1024*1024-%cl_recent_size%*1024*1024-%cl_prefetch_size%*1024*1024-%hiberfilsize%-%cl_firefox_size%*1024*1024-%cl_chrome_size%*1024*1024)/1024/1024
 	if %cl_edge_size% gtr 0 (
-		echo Microsoft Edge : %cl_edge_size% Mo >>"%tmp%\rapport.tmp"
+		echo Microsoft Edge : %cl_edge_size% Mo >>"%jpath%\JaspR.log"
 	)
 
 cls
@@ -970,10 +1200,10 @@ goto:eof
 :edgeopened
 set "backedge"==""
 set "cl_close"==""
-if exist "%windir%\system32\JaspRico.ico" (
-call :resultgui %cdir% #confirmkilledgewi
+if exist "%jpath%\JaspRico.ico" (
+call :resultgui "%jfullpath%" #confirmkilledgewi
 ) else (
-call :resultgui %cdir% #confirmkilledge
+call :resultgui "%jfullpath%" #confirmkilledge
 )
 	if %cl_close% equ 1 taskkill /f /im MicrosoftEdge.exe >nul 2>nul & taskkill /f /im MicrosoftEdgeCP.exe >nul 2>nul
 goto cl_edgekd
@@ -984,77 +1214,159 @@ tasklist |find "iexplore.exe" >nul 2>nul & if not errorlevel 1 goto iexploreopen
 
 :cl_iexplorekd
 
-for %%i in ("%localIEdir%") do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q /s "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+for /f "tokens=*" %%i in ('dir /s /b /a-d "%localIEdir%" 2^>nul') do if exist "%%i" (
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /s /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 
-for %%i in ("%localhistoryIEdir%") do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q /s "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+for /f "tokens=*" %%i in ('dir /s /b /ad "%localIEdir%" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
+
+for /f "tokens=*" %%i in ('dir /s /b /a-d "%localhistoryIEdir%" 2^>nul') do if exist "%%i" (
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /s /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 
-for %%i in ("%localtempIEdir%") do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q /s "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+for /f "tokens=*" %%i in ('dir /s /b /ad "%localhistoryIEdir%" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
+
+for /f "tokens=*" %%i in ('dir /s /b /a-d "%localtempIEdir%" 2^>nul') do if exist "%%i" (
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /s /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 
-for %%i in ("%roamingcookiesIEdir%") do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q /s "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+for /f "tokens=*" %%i in ('dir /s /b /ad "%localtempIEdir%" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
+
+for /f "tokens=*" %%i in ('dir /s /b /a-d "%roamingcookiesIEdir%" 2^>nul') do if exist "%%i" (
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /s /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 
-	if not %analyse% equ 1 del "%localappdata%\Microsoft\Windows\Temporary Internet Files\*.*" /f /s /q >nul 2>nul
+for /f "tokens=*" %%i in ('dir /s /b /ad "%roamingcookiesIEdir%" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
+
+for /f "tokens=*" %%i in ('dir /s /b /a-d "%localappdata%\Microsoft\Windows\Temporary Internet Files" 2^>nul') do if exist "%%i" (
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
+				)
+			)
+		)
+	)
+)
+
+for /f "tokens=*" %%i in ('dir /s /b /ad "%localappdata%\Microsoft\Windows\Temporary Internet Files" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
 
 for /f "tokens=*" %%i in ('dir /s /b /a-d "%localappdata%\microsoft\windows\inetcache" 2^>nul') do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 
 	if not %analyse% equ 1 reg delete "HKEY_CURRENT_USER\Software\Microsoft\Internet Explorer\TypedURLs" /va /f >nul 2>nul
 
@@ -1072,7 +1384,7 @@ if "%cl_chrome_size%"=="" set /a cl_chrome_size=0
 if "%cl_edge_size%"=="" set /a cl_edge_size=0
 set /a cl_iexplore_size=(%ttlclnsz%-%cl_temp_size%*1024*1024-%cl_winlog_size%*1024*1024-%cl_thumb_size%*1024*1024-%cl_trash_size%*1024*1024-%cl_recent_size%*1024*1024-%cl_prefetch_size%*1024*1024-%hiberfilsize%-%cl_firefox_size%*1024*1024-%cl_chrome_size%*1024*1024-%cl_edge_size%*1024*1024)/1024/1024
 	if %cl_iexplore_size% gtr 0 (
-		echo Internet Explorer : %cl_iexplore_size% Mo >>"%tmp%\rapport.tmp"
+		echo Internet Explorer : %cl_iexplore_size% Mo >>"%jpath%\JaspR.log"
 	)
 	
 cls
@@ -1094,10 +1406,10 @@ goto:eof
 :iexploreopened
 set "backiexplore"==""
 set "cl_close"==""
-if exist "%windir%\system32\JaspRico.ico" (
-call :resultgui %cdir% #confirmkilliexplorewi
+if exist "%jpath%\JaspRico.ico" (
+call :resultgui "%jfullpath%" #confirmkilliexplorewi
 ) else (
-call :resultgui %cdir% #confirmkilliexplore
+call :resultgui "%jfullpath%" #confirmkilliexplore
 )
 	if %cl_close% equ 1 taskkill /f /im iexplore.exe >nul 2>nul
 goto cl_iexplorekd
@@ -1108,61 +1420,105 @@ tasklist |find "safari.exe" >nul 2>nul & if not errorlevel 1 goto safariopened
 
 :cl_safarikd
 
-for %%i in ("%localhistorysafaridir%") do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q /s "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+for /f "tokens=*" %%i in ('dir /s /b /a-d "%localhistorysafaridir%" 2^>nul') do if exist "%%i" (
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /s /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
+
+for /f "tokens=*" %%i in ('dir /s /b /ad "%localhistorysafaridir%" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
 
 for %%i in ("%localsafaridir%\Cache.db") do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q /s "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 
 for %%i in ("%localsafaridir%\WebpageIcons.db") do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q /s "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 
-for %%i in ("%roamingsafaridir%") do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q /s "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+for /f "tokens=*" %%i in ('dir /s /b /a-d "%roamingsafaridir%" 2^>nul') do if exist "%%i" (
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /s /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
+
+for /f "tokens=*" %%i in ('dir /s /b /ad "%roamingsafaridir%" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
 	
 set "cl_safari_size"==""
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
@@ -1179,7 +1535,7 @@ if "%cl_edge_size%"=="" set /a cl_edge_size=0
 if "%cl_iexplore_size%"=="" set /a cl_iexplore_size=0
 set /a cl_safari_size=(%ttlclnsz%-%cl_temp_size%*1024*1024-%cl_winlog_size%*1024*1024-%cl_thumb_size%*1024*1024-%cl_trash_size%*1024*1024-%cl_recent_size%*1024*1024-%cl_prefetch_size%*1024*1024-%hiberfilsize%-%cl_firefox_size%*1024*1024-%cl_chrome_size%*1024*1024-%cl_edge_size%*1024*1024-%cl_iexplore_size%*1024*1024)/1024/1024
 	if %cl_safari_size% gtr 0 (
-		echo Safari : %cl_safari_size% Mo >>"%tmp%\rapport.tmp"
+		echo Safari : %cl_safari_size% Mo >>"%jpath%\JaspR.log"
 	)
 	
 cls
@@ -1201,10 +1557,10 @@ goto:eof
 :safariopened
 set "backsafari"==""
 set "cl_close"==""
-if exist "%windir%\system32\JaspRico.ico" (
-call :resultgui %cdir% #confirmkillsafariwi
+if exist "%jpath%\JaspRico.ico" (
+call :resultgui "%jfullpath%" #confirmkillsafariwi
 ) else (
-call :resultgui %cdir% #confirmkillsafari
+call :resultgui "%jfullpath%" #confirmkillsafari
 )
 	if %cl_close% equ 1 taskkill /f /im safari.exe >nul 2>nul
 goto cl_safarikd
@@ -1215,33 +1571,57 @@ tasklist |find "opera.exe" >nul 2>nul & if not errorlevel 1 goto operaopened
 
 :cl_operakd
 
-for %%i in ("%localoperadir%") do if exist "%%i" (
-	if exist "%%i" set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q /s "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+for /f "tokens=*" %%i in ('dir /s /b /a-d "%localoperadir%" 2^>nul') do if exist "%%i" (
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /s /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
 
-for %%i in ("%roamingoperadir%") do if exist "%%i" (
-	if %%~zi neq 0 set /a ttlclnsz=ttlclnsz+%%~zi
-	if not %analyse% equ 1 (
-		del /f /q /s "%%i" >nul 2>nul
-			if exist "%%i" (
-				if defined ttlclnsz (
-					if %%~zi neq 0 (
-						set /a ttlclnsz=ttlclnsz-%%~zi
-					)
+for /f "tokens=*" %%i in ('dir /s /b /ad "%localoperadir%" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
+
+for /f "tokens=*" %%i in ('dir /s /b /a-d "%roamingoperadir%" 2^>nul') do if exist "%%i" (
+	if %analyse% equ 1 (
+		2>nul (
+		>>"%%i" (call )
+		) && (
+			if %%~zi neq 0 (
+				set /a ttlclnsz=ttlclnsz+%%~zi
+			)
+		)
+	) else (
+		if %%~zi neq 0 (
+			set /a ttlclnsz=ttlclnsz+%%~zi
+		)
+		del "%%i" /f /q /s /ah /ar /ai /aa >nul 2>nul
+		if exist "%%i" (
+			if defined ttlclnsz (
+				if %%~zi neq 0 (
+					set /a ttlclnsz=ttlclnsz-%%~zi
 				)
 			)
 		)
 	)
+)
+
+for /f "tokens=*" %%i in ('dir /s /b /ad "%roamingoperadir%" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
 
 set "cl_opera_size"==""
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
@@ -1259,7 +1639,7 @@ if "%cl_iexplore_size%"=="" set /a cl_iexplore_size=0
 if "%cl_safari_size%"=="" set /a cl_safari_size=0
 set /a cl_opera_size=(%ttlclnsz%-%cl_temp_size%*1024*1024-%cl_winlog_size%*1024*1024-%cl_thumb_size%*1024*1024-%cl_trash_size%*1024*1024-%cl_recent_size%*1024*1024-%cl_prefetch_size%*1024*1024-%hiberfilsize%-%cl_firefox_size%*1024*1024-%cl_chrome_size%*1024*1024-%cl_edge_size%*1024*1024-%cl_iexplore_size%*1024*1024-%cl_safari_size%*1024*1024)/1024/1024
 	if %cl_opera_size% gtr 0 (
-		echo Opera : %cl_opera_size% Mo >>"%tmp%\rapport.tmp"
+		echo Opera : %cl_opera_size% Mo >>"%jpath%\JaspR.log"
 	)
 	
 cls
@@ -1281,10 +1661,10 @@ goto:eof
 :operaopened
 set "backopera"==""
 set "cl_close"==""
-if exist "%windir%\system32\JaspRico.ico" (
-call :resultgui %cdir% #confirmkilloperawi
+if exist "%jpath%\JaspRico.ico" (
+call :resultgui "%jfullpath%" #confirmkilloperawi
 ) else (
-call :resultgui %cdir% #confirmkillopera
+call :resultgui "%jfullpath%" #confirmkillopera
 )
 	if %cl_close% equ 1 taskkill /f /im opera.exe >nul 2>nul
 goto cl_operakd
@@ -1296,24 +1676,24 @@ goto cl_operakd
 
 ::#cl_mainwi
 ::Window "JaspR" 450 420
-::icon "C:\windows\system32\JaspRico.ico"
+::icon "%jpath%\JaspRico.ico"
 ::Text "S√©lectionnez les √©l√©ments que vous souhaitez nettoyer :" 10 20 350 15
-::checkbox "tempfiles" "Fichiers Temporaires" TRUE 20 70 180 25
-::checkbox "emptytrash" "Vider la Corbeille" TRUE 20 100 180 25
-::checkbox "recentfiles" "Liste des Fichiers R√©cents" TRUE 20 130 180 25
-::checkbox "logwindows" "Fichiers Journal de Windows" TRUE 200 70 180 25
-::checkbox "thumbcache" "Cache des vignettes" TRUE 200 100 180 25
-::checkbox "prefetch" "Vieilles donn√©es du prefetch" TRUE 200 130 180 25
-::checkbox "hiberstate" "D√©sactiver la mise en veille prolong√©e" FALSE 20 160 250 25
+::checkbox "tempfiles" "Fichiers Temporaires" %tempbool% 20 70 180 25
+::checkbox "emptytrash" "Vider la Corbeille" %trashbool% 20 100 180 25
+::checkbox "recentfiles" "Liste des Fichiers R√©cents" %recentbool% 20 130 180 25
+::checkbox "logwindows" "Fichiers Journal de Windows" %winlogbool% 200 70 180 25
+::checkbox "thumbcache" "Cache des vignettes" %thumbbool% 200 100 180 25
+::checkbox "prefetch" "Vieilles donn√©es du prefetch" %prefetchbool% 200 130 180 25
+::checkbox "hiberstate" "D√©sactiver la mise en veille prolong√©e" %hiberbool% 20 160 250 25
 ::Text "Navigateurs :" 20 220 75 15
-::radio "yes_clean_nav" "Oui" TRUE navch 100 215 50 25
-::radio "no_clean_nav" "Non" FALSE navch 150 215 50 25
-::checkbox "cl_firefox" "Mozilla Firefox" FALSE 20 260 100 25
-::checkbox "cl_chrome" "Google Chrome" FALSE 150 260 110 25
-::checkbox "cl_edge" "Microsoft Edge" FALSE 280 260 100 25
-::checkbox "cl_iexplore" "Internet Explorer" FALSE 20 295 115 25
-::checkbox "cl_safari" "Safari" FALSE 150 295 100 25
-::checkbox "cl_opera" "Opera" FALSE 280 295 100 25
+::radio "yes_clean_nav" "Oui" %yesnavbool% navch 100 215 50 25
+::radio "no_clean_nav" "Non" %nonavbool% navch 150 215 50 25
+::checkbox "cl_firefox" "Mozilla Firefox" %firefoxbool% 20 260 100 25
+::checkbox "cl_chrome" "Google Chrome" %chromebool% 150 260 110 25
+::checkbox "cl_edge" "Microsoft Edge" %edgebool% 280 260 100 25
+::checkbox "cl_iexplore" "Internet Explorer" %iexplorebool% 20 295 115 25
+::checkbox "cl_safari" "Safari" %safaribool% 150 295 100 25
+::checkbox "cl_opera" "Opera" %operabool% 280 295 100 25
 ::Button "back" "Quitter" 75 340 75 25 Popup
 ::Button "analyse" "Analyser" 178 340 75 25 Popup
 ::Button "confirm_clean" "Nettoyer" 280 340 75 25 Popup
@@ -1321,7 +1701,7 @@ goto cl_operakd
 
 ::#confirmkillfirefoxwi
 ::Window "Fermeture de Firefox" 392 210
-::icon "C:\windows\system32\JaspRico.ico"
+::icon "%jpath%\JaspRico.ico"
 ::Button "backfirefox" "Non" 105 130 75 25
 ::Button "cl_close" "Oui" 195 130 75 25
 ::Text "Voulez-vous que JaspR ferme Firefox ?" 90 100 250 15
@@ -1332,7 +1712,7 @@ goto cl_operakd
 
 ::#confirmkillchromewi
 ::Window "Fermeture de Google Chrome" 380 210
-::icon "C:\windows\system32\JaspRico.ico"
+::icon "%jpath%\JaspRico.ico"
 ::Button "backchrome" "Non" 105 130 75 25
 ::Button "cl_close" "Oui" 195 130 75 25
 ::Text "Voulez-vous que JaspR ferme Google Chrome ?" 50 100 300 15
@@ -1343,7 +1723,7 @@ goto cl_operakd
 
 ::#confirmkilledgewi
 ::Window "Fermeture de Microsoft Edge" 392 210
-::icon "C:\windows\system32\JaspRico.ico"
+::icon "%jpath%\JaspRico.ico"
 ::Button "backedge" "Non" 105 130 75 25
 ::Button "cl_close" "Oui" 195 130 75 25
 ::Text "Voulez-vous que JaspR ferme Microsoft Edge ?" 75 100 250 15
@@ -1354,7 +1734,7 @@ goto cl_operakd
 
 ::#confirmkilliexplorewi
 ::Window "Fermeture de Internet Explorer" 392 210
-::icon "C:\windows\system32\JaspRico.ico"
+::icon "%jpath%\JaspRico.ico"
 ::Button "backiexplore" "Non" 105 130 75 25
 ::Button "cl_close" "Oui" 195 130 75 25
 ::Text "Voulez-vous que JaspR ferme Internet Explorer ?" 60 100 300 15
@@ -1365,7 +1745,7 @@ goto cl_operakd
 
 ::#confirmkillsafariwi
 ::Window "Fermeture de Safari" 392 210
-::icon "C:\windows\system32\JaspRico.ico"
+::icon "%jpath%\JaspRico.ico"
 ::Button "backsafari" "Non" 105 130 75 25
 ::Button "cl_close" "Oui" 195 130 75 25
 ::Text "Voulez-vous que JaspR ferme Safari ?" 90 100 250 15
@@ -1376,7 +1756,7 @@ goto cl_operakd
 
 ::#confirmkilloperawi
 ::Window "Fermeture de Opera" 392 210
-::icon "C:\windows\system32\JaspRico.ico"
+::icon "%jpath%\JaspRico.ico"
 ::Button "backopera" "Non" 105 130 75 25
 ::Button "cl_close" "Oui" 195 130 75 25
 ::Text "Voulez-vous que JaspR ferme Opera ?" 90 100 250 15
@@ -1392,22 +1772,22 @@ goto cl_operakd
 ::#cl_main
 ::Window "JaspR" 450 420
 ::Text "S√©lectionnez les √©l√©ments que vous souhaitez nettoyer :" 10 20 350 15
-::checkbox "tempfiles" "Fichiers Temporaires" TRUE 20 70 180 25
-::checkbox "emptytrash" "Vider la Corbeille" TRUE 20 100 180 25
-::checkbox "recentfiles" "Liste des Fichiers R√©cents" TRUE 20 130 180 25
-::checkbox "logwindows" "Fichiers Journal de Windows" TRUE 200 70 180 25
-::checkbox "thumbcache" "Cache des vignettes" TRUE 200 100 180 25
-::checkbox "prefetch" "Vieilles donn√©es du prefetch" TRUE 200 130 180 25
-::checkbox "hiberstate" "D√©sactiver la mise en veille prolong√©e" FALSE 20 160 250 25
+::checkbox "tempfiles" "Fichiers Temporaires" %tempbool% 20 70 180 25
+::checkbox "emptytrash" "Vider la Corbeille" %trashbool% 20 100 180 25
+::checkbox "recentfiles" "Liste des Fichiers R√©cents" %recentbool% 20 130 180 25
+::checkbox "logwindows" "Fichiers Journal de Windows" %winlogbool% 200 70 180 25
+::checkbox "thumbcache" "Cache des vignettes" %thumbbool% 200 100 180 25
+::checkbox "prefetch" "Vieilles donn√©es du prefetch" %prefetchbool% 200 130 180 25
+::checkbox "hiberstate" "D√©sactiver la mise en veille prolong√©e" %hiberbool% 20 160 250 25
 ::Text "Navigateurs :" 20 220 75 15
-::radio "yes_clean_nav" "Oui" TRUE navch 100 215 50 25
-::radio "no_clean_nav" "Non" FALSE navch 150 215 50 25
-::checkbox "cl_firefox" "Mozilla Firefox" FALSE 20 260 100 25
-::checkbox "cl_chrome" "Google Chrome" FALSE 150 260 110 25
-::checkbox "cl_edge" "Microsoft Edge" FALSE 280 260 100 25
-::checkbox "cl_iexplore" "Internet Explorer" FALSE 20 295 115 25
-::checkbox "cl_safari" "Safari" FALSE 150 295 100 25
-::checkbox "cl_opera" "Opera" FALSE 280 295 100 25
+::radio "yes_clean_nav" "Oui" %yesnavbool% navch 100 215 50 25
+::radio "no_clean_nav" "Non" %nonavbool% navch 150 215 50 25
+::checkbox "cl_firefox" "Mozilla Firefox" %firefoxbool% 20 260 100 25
+::checkbox "cl_chrome" "Google Chrome" %chromebool% 150 260 110 25
+::checkbox "cl_edge" "Microsoft Edge" %edgebool% 280 260 100 25
+::checkbox "cl_iexplore" "Internet Explorer" %iexplorebool% 20 295 115 25
+::checkbox "cl_safari" "Safari" %safaribool% 150 295 100 25
+::checkbox "cl_opera" "Opera" %operabool% 280 295 100 25
 ::Button "back" "Quitter" 75 340 75 25 Popup
 ::Button "analyse" "Analyser" 178 340 75 25 Popup
 ::Button "confirm_clean" "Nettoyer" 280 340 75 25 Popup
