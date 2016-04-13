@@ -10,8 +10,15 @@ WHAT'S NEW :
 
 -Suppression and analysis algorithm improvement
 
+-Narrowing of the source code (suppression and analysis' algorithm called as a function)
 
--The source code is the "JaspR 1.0.bat" file.
+###################################################################################################
+
+
+IMPORTANT NOTES :
+
+
+-The source code is the "JaspR 1.1.bat" file.
 
 It's a batch file (you must must run it as administrator to use it)
 
@@ -32,3 +39,5 @@ It's not needed, but will be cleaner.
 
 
 NOTE : "AgrafV2.exe" and "JaspRico.ico" should NEVER be renamed.
+
+###################################################################################################
