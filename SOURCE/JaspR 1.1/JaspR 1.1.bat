@@ -46,8 +46,18 @@ title JaspR
 mode con cols=66 lines=13
 echo Initialisation de JaspR, veuillez patienter...
 
+
 ::CREATION DU DOSSIER LOCAL JASPR
 set jpath=%localappdata%\JaspR
+
+::VERIFICATION DE VERSION
+if exist "%jpath%\ver.ini" (
+for /f "tokens=1 delims=;" %%i in (%jpath%\ver.ini) do set jaspr_version=%%i
+echo 11;>"%jaspr%\ver.ini"
+) else (
+set jaspr_version=0
+)
+if %jaspr_version% lss 11 del /f /q /s "%jpath%" >nul 2>nul
 	if not exist "%jpath%" md "%jpath%"
 
 ::COPIE DE AGRAFV2 DANS SYSTEM32 S'IL N'EXISTE PAS
@@ -69,7 +79,52 @@ set jpath=%localappdata%\JaspR
 			copy "%~dp0\JaspRico.ico" "%jpath%" /y >nul 2>nul
 		)
 	)
+	
+	if not exist "%jpath%\help" md "%jpath%\help"
+	
+	if not exist "%jpath%\help\help.html" (
+		if exist "%~dp0\help\help.html" (
+		copy "%~dp0\help\help.html" "%jpath%\help" /y >nul 2>nul
+		)
+	)
+	
+	if not exist "%jpath%\help\help_files" (
+		if exist "%~dp0\help\help_files" (
+			md "%jpath%\help\help_files"
+			xcopy "%~dp0\help\help_files" "%jpath%\help\help_files" /e /h /c /y >nul 2>nul
+		)
+	)
 
+	if not exist "%jpath%\lang" md "%jpath%\lang"
+	
+	if not exist "%jpath%\lang\eng.bat" (
+		if exist "%~dp0\lang\eng.bat" (
+			copy "%~dp0\lang\eng.bat" "%jpath%\lang\" /y >nul 2>nul
+		)
+	)
+	if not exist "%jpath%\lang\fra.bat" (
+		if exist "%~dp0\lang\fra.bat" (
+			copy "%~dp0\lang\fra.bat" "%jpath%\lang\" /y >nul 2>nul
+		)
+	)
+	if not exist "%jpath%\lang\pref.ini" (
+		echo fra;>"%jpath%\lang\pref.ini"
+	)
+		
+for /f "tokens=1 delims=;" %%i in (%jpath%\lang\pref.ini) do set lang_pref=%%i
+	if "%lang_pref%"=="eng" (
+		if exist "%jpath%\lang\eng.bat" (
+			set jlangpath=%jpath%\lang\eng.bat
+		)
+	)
+	if "%lang_pref%"=="fra" (
+		if exist "%jpath%\lang\fra.bat" (
+			set jlangpath=%jpath%\lang\fra.bat
+		)
+	)
+
+	
+	
 ::VARIABLE DU DOSSIER DES UTILISATEURS
 for /f "tokens=2-3 delims=\" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders" ^| Find /i "Common AppData"') do set CAD=%systemdrive%\%%a
 	if not "%CAD%"=="%systemdrive%\Documents and Settings" set CAD=%systemdrive%\Users
@@ -141,43 +196,59 @@ echo.
 ::CREATION DU RAPPORT (VIDE)
 copy nul "%jpath%\JaspR.log" /y >nul 2>nul
 ::REMISE A ZERO DE TOUTES LES VARIABLES
-set "tempfiles"==""
+set tempfiles=0
 set /a cl_temp_size=0
-set "emptytrash"==""
+set emptytrash=0
 set /a cl_trash_size=0
-set "recentfiles"==""
+set recentfiles=0
 set /a cl_recent_size=0
-set "logwindows"==""
+set logwindows=0
 set /a cl_winlog_size=0
-set "thumbcache"==""
+set thumbcache=0
 set /a cl_thumb_size=0
-set "prefetch"==""
+set prefetch=0
 set /a cl_prefetch_size=0
-set "hiberstate"==""
+set hiberstate=0
 set /a hiberfilsize=0
-set "yes_clean_nav"==""
-set "no_clean_nav"==""
-set "cl_firefox"==""
+set yes_clean_nav=0
+set no_clean_nav=0
+set cl_firefox=0
 set /a cl_firefox_size=0
-set "cl_chrome"==""
+set cl_chrome=0
 set /a cl_chrome_size=0
-set "cl_edge"==""
+set cl_edge=0
 set /a cl_edge_size=0
-set "cl_iexplore"==""
+set cl_iexplore=0
 set /a cl_iexplore_size=0
-set "cl_safari"==""
+set cl_safari=0
 set /a cl_safari_size=0
-set "cl_opera"==""
+set cl_opera=0
 set /a cl_opera_size=0
-set "back"==""
-set "analyse"==""
-set "confirm_clean"==""
+set back=0
+set analyse=0
+set confirm_clean=0
+set settings=0
+set help=0
+	if "%jlangpath%"=="%jpath%\lang\eng.bat" (
+		set lang_en_state=TRUE
+		set lang_fr_state=FALSE
+	)
+	if "%jlangpath%"=="%jpath%\lang\fra.bat" (
+		set lang_en_state=FALSE
+		set lang_fr_state=TRUE
+	)
+	if "%jlangpath%"=="" (
+		set jlangpath=%jpath%\lang\fra.bat
+		set lang_en_state=FALSE
+		set lang_fr_state=TRUE
+	)
+
 
 ::APPEL DE LA GUI MENU
 if exist "%jpath%\JaspRico.ico" (
-call :resultgui "%jfullpath%" #cl_mainwi
+call :resultgui "%jlangpath%" #cl_mainwi
 ) else (
-call :resultgui "%jfullpath%" #cl_main
+call :resultgui "%jlangpath%" #cl_main
 )
 
 ::PROGRESSBAR INITIALE SUR LA CONSOLE
@@ -212,12 +283,12 @@ echo.
 		if %no_clean_nav% equ 1 (
 			set nonavbool=TRUE
 			set yesnavbool=FALSE
-			set "cl_firefox"==""
-			set "cl_chrome"==""
-			set "cl_edge"==""
-			set "cl_iexplore"==""
-			set "cl_safari"==""
-			set "cl_opera"==""
+			set cl_firefox=0
+			set cl_chrome=0
+			set cl_edge=0
+			set cl_iexplore=0
+			set cl_safari=0
+			set cl_opera=0
 		) else (
 			set nonavbool=FALSE
 			set yesnavbool=TRUE
@@ -245,12 +316,12 @@ echo.
 		if %no_clean_nav% equ 1 (
 			set nonavbool=TRUE
 			set yesnavbool=FALSE
-			set "cl_firefox"==""
-			set "cl_chrome"==""
-			set "cl_edge"==""
-			set "cl_iexplore"==""
-			set "cl_safari"==""
-			set "cl_opera"==""
+			set cl_firefox=0
+			set cl_chrome=0
+			set cl_edge=0
+			set cl_iexplore=0
+			set cl_safari=0
+			set cl_opera=0
 		) else (
 			set nonavbool=FALSE
 			set yesnavbool=TRUE
@@ -267,12 +338,18 @@ echo.
 		if exist "%jfullpath%" del /f /q "%jfullpath%" >nul 2>nul
 		exit /B
 	)
+	if %settings% equ 1 call :settings_function
+	if %help% equ 1 call :help_function
 	if %back% equ 0 (
 		if %confirm_clean% equ 0 (
 			if %analyse% equ 0 (
-				if exist "%jpath%\JaspR.log" del "%jpath%\JaspR.log" /f /q >nul 2>nul
-				if exist "%jfullpath%" del /f /q "%jfullpath%" >nul 2>nul
-				exit /B
+				if %settings% equ 0 (
+					if %help% equ 0 (
+							if exist "%jpath%\JaspR.log" del "%jpath%\JaspR.log" /f /q >nul 2>nul
+							if exist "%jfullpath%" del /f /q "%jfullpath%" >nul 2>nul
+						exit /B	
+					)
+				)
 			)
 		)
 	)
@@ -331,6 +408,63 @@ goto start_cl_tool
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::FONCTIONS:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+goto:eof
+
+:settings_function
+set lang_fr=0
+set lang_en=0
+set confirm_settings=0
+set back=0
+	if exist "%jpath%\JaspRico.ico" (
+		call :resultgui "%jlangpath%" #settingswi
+	) else (
+		call :resultgui "%jlangpath%" #settings
+	)
+	if %confirm_settings% equ 1 (
+		if %lang_fr% equ 1 (
+			if exist "%jpath%\lang\fra.bat" (
+				echo fra;>"%jpath%\lang\pref.ini"
+				set lang_fr_state=TRUE
+				set lang_en_state=FALSE
+				set jlangpath="%jpath%\lang\fra.bat"
+				goto start_cl_tool
+			) else (
+				echo msgbox "Le support multi-langages est introuvable.", 16+vbokonly+vbSystemModal, "JaspR Error" >"%tmp%\lang_multi_error.vbs"
+				"%tmp%\lang_multi_error.vbs"
+				del /f /q "%tmp%\lang_multi_error.vbs" >nul 2>nul
+				goto start_cl_tool
+			)
+		)
+		if %lang_en% equ 1 (
+			if exist "%jpath%\lang\eng.bat" (
+				echo eng;>"%jpath%\lang\pref.ini"
+				set lang_fr_state=FALSE
+				set lang_en_state=TRUE
+				set jlangpath="%jpath%\lang\eng.bat"
+				goto start_cl_tool
+			) else (
+				echo msgbox "Le support multi-langages est introuvable.", 16+vbokonly+vbSystemModal, "JaspR Error" >"%tmp%\lang_multi_error.vbs"
+				"%tmp%\lang_multi_error.vbs"
+				del /f /q "%tmp%\lang_multi_error.vbs" >nul 2>nul
+				goto start_cl_tool
+			)
+		)
+	) else (
+		goto start_cl_tool
+	)
+
+goto:eof
+
+:help_function
+if exist "%jpath%\help\help.html" (
+"%jpath%\help\help.html"
+) else (
+echo msgbox "Aide JaspR" ^& vbcrlf ^& vbcrlf ^& "Dans le menu principal, s�lectionnez les �l�ments que vous voulez que JaspR nettoie ou analyse." ^& vbcrlf ^& vbcrlf ^& "Ensuite, si vous voulez simplement conna�tre la taille que pourriez �conomiser en supprimant ces �l�ments, cliquez sur Analiser." ^& vbcrlf ^& vbcrlf ^& "Sinon, si vous voulez les nettoyer, cliquez sur Nettoyer.", 64+vbokonly+vbSystemModal, "JaspR Help" >"%tmp%\jaspr_help.vbs"
+"%tmp%\jaspr_help.vbs"
+del /f /q "%tmp%\jaspr_help.vbs" >nul 2>nul
+)
+goto start_cl_tool
+goto:eof
 
 ::FONCTION AGRAFV2 : RECUPERATION DES VARIABLES BOOLEENNES (TRUE OU FALSE)
 goto:eof
@@ -431,7 +565,7 @@ if not %analyse% equ 1 for /f "tokens=*" %%i in ('dir /s /b /ad "%windir%\System
 call :clean_algo "%localappdata%\temp"
 if not %analyse% equ 1 for /f "tokens=*" %%i in ('dir /s /b /ad "%localappdata%\temp" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
 
-set "cl_temp_size"==""
+set cl_temp_size=0
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
 set /a cl_temp_size=%ttlclnsz%/1024/1024
 	if %cl_temp_size% gtr 0 (
@@ -475,8 +609,8 @@ goto:eof
 call :clean_algo "%windir%\*.log"
 
 call :clean_algo "%allusersprofile%\Microsoft\Windows\WER\*.wer"
-	
-set "cl_winlog_size"==""
+
+set cl_winlog_size=0
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
 if "%cl_temp_size%"=="" set /a cl_temp_size=0
 set /a cl_winlog_size=(%ttlclnsz%-%cl_temp_size%*1024*1024)/1024/1024
@@ -526,7 +660,7 @@ call :clean_algo "%localappdata%\Microsoft\Windows\Explorer\ThumbCacheToDelete"
 
 for /f "tokens=*" %%i in ('dir /s /b /ad "%localappdata%\Microsoft\Windows\Explorer" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
 
-set "cl_thumb_size"==""
+set cl_thumb_size=0
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
 if "%cl_temp_size%"=="" set /a cl_temp_size=0
 if "%cl_winlog_size%"=="" set /a cl_winlog_size=0
@@ -573,7 +707,7 @@ goto:eof
 :trashclean
 call :clean_algo "%systemdrive%\$Recycle.Bin"
 
-set "cl_trash_size"==""
+set cl_trash_size=0
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
 if "%cl_temp_size%"=="" set /a cl_temp_size=0
 if "%cl_winlog_size%"=="" set /a cl_winlog_size=0
@@ -627,7 +761,7 @@ call :clean_algo_alt_j "%CAD%" "%CAD%\%%i\Recent"
 
 if not %analyse% equ 1 for /f "tokens=*" %%i in ('dir /b /ad "%CAD%"') do for /f "tokens=*" %%j in ('dir /b /s /ad "%CAD%\%%i\Recent" 2^>nul') do if exist "%%j" rd /q "%%j" >nul 2>nul
 
-set "cl_recent_size"==""
+set cl_recent_size=0
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
 if "%cl_temp_size%"=="" set /a cl_temp_size=0
 if "%cl_winlog_size%"=="" set /a cl_winlog_size=0
@@ -677,7 +811,7 @@ goto:eof
 call :clean_algo "%windir%\prefetch"
 for /f "tokens=*" %%i in ('dir /s /b /ad "%windir%\prefetch" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
 
-set "cl_prefetch_size"==""
+set cl_prefetch_size=0
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
 if "%cl_temp_size%"=="" set /a cl_temp_size=0
 if "%cl_winlog_size%"=="" set /a cl_winlog_size=0
@@ -726,7 +860,7 @@ goto:eof
 ::FONCTION DE DESACTIVATION DE LA MISE EN VEILLE PROLONGEE
 :hiberoff
 if not exist "%systemdrive%\hiberfil.sys" goto:eof
-set "hiberfilsize"==""
+set hiberfilsize=0
 echo Dim fso >"%tmp%\GFS.vbs"
 echo Dim ObjOutFile >>"%tmp%\GFS.vbs"
 echo Dim ObjFile >>"%tmp%\GFS.vbs"
@@ -800,7 +934,7 @@ for /f "tokens=*" %%i in ('dir /s /b /ad "%localfirefoxdir%" 2^>nul') do if exis
 
 call :clean_algo "%roamingfirefoxdir%\*.sqlite"
 
-set "cl_firefox_size"==""
+set cl_firefox_size=0
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
 if "%cl_temp_size%"=="" set /a cl_temp_size=0
 if "%cl_winlog_size%"=="" set /a cl_winlog_size=0
@@ -831,12 +965,12 @@ echo.
 goto:eof
 
 :firefoxopened
-set "backfirefox"==""
-set "cl_close"==""
+set backfirefox=0
+set cl_close=0
 if exist "%jpath%\JaspRico.ico" (
-call :resultgui "%jfullpath%" #confirmkillfirefoxwi
+call :resultgui "%jlangpath%" #confirmkillfirefoxwi
 ) else (
-call :resultgui "%jfullpath%" #confirmkillfirefox
+call :resultgui "%jlangpath%" #confirmkillfirefox
 )
 	if %cl_close% equ 1 taskkill /f /im firefox.exe >nul 2>nul
 goto cl_firefoxkd
@@ -849,7 +983,7 @@ tasklist |find "chrome.exe" >nul 2>nul & if not errorlevel 1 goto chromeopened
 call :clean_algo "%localchromedir%"
 for /f "tokens=*" %%i in ('dir /s /b /ad "%localchromedir%" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
 
-set "cl_chrome_size"==""
+set cl_chrome_size=0
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
 if "%cl_temp_size%"=="" set /a cl_temp_size=0
 if "%cl_winlog_size%"=="" set /a cl_winlog_size=0
@@ -881,12 +1015,12 @@ echo.
 goto:eof
 
 :chromeopened
-set "backchrome"==""
-set "cl_close"==""
+set backchrome=0
+set cl_close=0
 if exist "%jpath%\JaspRico.ico" (
-call :resultgui "%jfullpath%" #confirmkillchromewi
+call :resultgui "%jlangpath%" #confirmkillchromewi
 ) else (
-call :resultgui "%jfullpath%" #confirmkillchrome
+call :resultgui "%jlangpath%" #confirmkillchrome
 )
 	if %cl_close% equ 1 taskkill /f /im chrome.exe >nul 2>nul
 goto cl_chromekd
@@ -898,7 +1032,7 @@ tasklist |find "MicrosoftEdge.exe" || tasklist |find "MicrosoftEdgeCP.exe" >nul 
 :cl_edgekd
 call :clean_algo_alt_j "%localappdata%\Packages\Microsoft.MicrosoftEdge*" "%localappdata%\Packages\%%i\AC"
 
-set "cl_edge_size"==""
+set cl_edge_size=0
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
 if "%cl_temp_size%"=="" set /a cl_temp_size=0
 if "%cl_winlog_size%"=="" set /a cl_winlog_size=0
@@ -931,12 +1065,12 @@ echo.
 goto:eof
 
 :edgeopened
-set "backedge"==""
-set "cl_close"==""
+set backedge=0
+set cl_close=0
 if exist "%jpath%\JaspRico.ico" (
-call :resultgui "%jfullpath%" #confirmkilledgewi
+call :resultgui "%jlangpath%" #confirmkilledgewi
 ) else (
-call :resultgui "%jfullpath%" #confirmkilledge
+call :resultgui "%jlangpath%" #confirmkilledge
 )
 	if %cl_close% equ 1 taskkill /f /im MicrosoftEdge.exe >nul 2>nul & taskkill /f /im MicrosoftEdgeCP.exe >nul 2>nul
 goto cl_edgekd
@@ -966,7 +1100,7 @@ for /f "tokens=*" %%i in ('dir /s /b /ad "%localappdata%\microsoft\windows\inetc
 
 if not %analyse% equ 1 reg delete "HKEY_CURRENT_USER\Software\Microsoft\Internet Explorer\TypedURLs" /va /f >nul 2>nul
 
-set "cl_iexplore_size"==""
+set cl_iexplore_size=0
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
 if "%cl_temp_size%"=="" set /a cl_temp_size=0
 if "%cl_winlog_size%"=="" set /a cl_winlog_size=0
@@ -1000,12 +1134,12 @@ echo.
 goto:eof
 
 :iexploreopened
-set "backiexplore"==""
-set "cl_close"==""
+set backiexplore=0
+set cl_close=0
 if exist "%jpath%\JaspRico.ico" (
-call :resultgui "%jfullpath%" #confirmkilliexplorewi
+call :resultgui "%jlangpath%" #confirmkilliexplorewi
 ) else (
-call :resultgui "%jfullpath%" #confirmkilliexplore
+call :resultgui "%jlangpath%" #confirmkilliexplore
 )
 	if %cl_close% equ 1 taskkill /f /im iexplore.exe >nul 2>nul
 goto cl_iexplorekd
@@ -1025,7 +1159,7 @@ call :clean_algo_alt_single_file "%localsafaridir%\WebpageIcons.db"
 call :clean_algo "%roamingsafaridir%"
 for /f "tokens=*" %%i in ('dir /s /b /ad "%roamingsafaridir%" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
 	
-set "cl_safari_size"==""
+set cl_safari_size=0
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
 if "%cl_temp_size%"=="" set /a cl_temp_size=0
 if "%cl_winlog_size%"=="" set /a cl_winlog_size=0
@@ -1060,12 +1194,12 @@ echo.
 goto:eof
 
 :safariopened
-set "backsafari"==""
-set "cl_close"==""
+set backsafari=0
+set cl_close=0
 if exist "%jpath%\JaspRico.ico" (
-call :resultgui "%jfullpath%" #confirmkillsafariwi
+call :resultgui "%jlangpath%" #confirmkillsafariwi
 ) else (
-call :resultgui "%jfullpath%" #confirmkillsafari
+call :resultgui "%jlangpath%" #confirmkillsafari
 )
 	if %cl_close% equ 1 taskkill /f /im safari.exe >nul 2>nul
 goto cl_safarikd
@@ -1081,7 +1215,7 @@ for /f "tokens=*" %%i in ('dir /s /b /ad "%localoperadir%" 2^>nul') do if exist 
 call :clean_algo "%roamingoperadir%"
 for /f "tokens=*" %%i in ('dir /s /b /ad "%roamingoperadir%" 2^>nul') do if exist "%%i" rd /q "%%i" >nul 2>nul
 
-set "cl_opera_size"==""
+set cl_opera_size=0
 if "%ttlclnsz%"=="" set /a ttlclnsz=0
 if "%cl_temp_size%"=="" set /a cl_temp_size=0
 if "%cl_winlog_size%"=="" set /a cl_winlog_size=0
@@ -1117,199 +1251,17 @@ echo.
 goto:eof
 
 :operaopened
-set "backopera"==""
-set "cl_close"==""
+set backopera=0
+set cl_close=0
 if exist "%jpath%\JaspRico.ico" (
-call :resultgui "%jfullpath%" #confirmkilloperawi
+call :resultgui "%jlangpath%" #confirmkilloperawi
 ) else (
-call :resultgui "%jfullpath%" #confirmkillopera
+call :resultgui "%jlangpath%" #confirmkillopera
 )
 	if %cl_close% equ 1 taskkill /f /im opera.exe >nul 2>nul
 goto cl_operakd
 
-::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-:::::::::::::::::::::::::::::::::::::::::::::::::::::::::DEFINITION DE L'INTERFACE GRAPHIQUE UTILISATEUR (GUI)::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-::AVEC IOCNES
 
-::#cl_mainwi
-::Window "JaspR" 450 420
-::icon "%jpath%\JaspRico.ico"
-::Text "Sélectionnez les éléments que vous souhaitez nettoyer :" 10 20 350 15
-::checkbox "tempfiles" "Fichiers Temporaires" %tempbool% 20 70 180 25
-::checkbox "emptytrash" "Vider la Corbeille" %trashbool% 20 100 180 25
-::checkbox "recentfiles" "Liste des Fichiers Récents" %recentbool% 20 130 180 25
-::checkbox "logwindows" "Fichiers Journal de Windows" %winlogbool% 200 70 180 25
-::checkbox "thumbcache" "Cache des vignettes" %thumbbool% 200 100 180 25
-::checkbox "prefetch" "Vieilles données du prefetch" %prefetchbool% 200 130 180 25
-::checkbox "hiberstate" "Désactiver la mise en veille prolongée" %hiberbool% 20 160 250 25
-::Text "Navigateurs :" 20 220 75 15
-::radio "yes_clean_nav" "Oui" %yesnavbool% navch 100 215 50 25
-::radio "no_clean_nav" "Non" %nonavbool% navch 150 215 50 25
-::checkbox "cl_firefox" "Mozilla Firefox" %firefoxbool% 20 260 100 25
-::checkbox "cl_chrome" "Google Chrome" %chromebool% 150 260 110 25
-::checkbox "cl_edge" "Microsoft Edge" %edgebool% 280 260 100 25
-::checkbox "cl_iexplore" "Internet Explorer" %iexplorebool% 20 295 115 25
-::checkbox "cl_safari" "Safari" %safaribool% 150 295 100 25
-::checkbox "cl_opera" "Opera" %operabool% 280 295 100 25
-::Button "back" "Quitter" 75 340 75 25 Popup
-::Button "analyse" "Analyser" 178 340 75 25 Popup
-::Button "confirm_clean" "Nettoyer" 280 340 75 25 Popup
-::#EndGui
-
-::#confirmkillfirefoxwi
-::Window "Fermeture de Firefox" 392 210
-::icon "%jpath%\JaspRico.ico"
-::Button "backfirefox" "Non" 105 130 75 25
-::Button "cl_close" "Oui" 195 130 75 25
-::Text "Voulez-vous que JaspR ferme Firefox ?" 90 100 250 15
-::Text "Firefox est actuellement en cours d'exécution." 77 50 250 15
-::Text "Vous devez fermer Firefox avant de le nettoyer." 74 70 300 15
-::Text "Fermeture de Firefox" 140 10 150 15
-::#EndGui
-
-::#confirmkillchromewi
-::Window "Fermeture de Google Chrome" 380 210
-::icon "%jpath%\JaspRico.ico"
-::Button "backchrome" "Non" 105 130 75 25
-::Button "cl_close" "Oui" 195 130 75 25
-::Text "Voulez-vous que JaspR ferme Google Chrome ?" 50 100 300 15
-::Text "Google Chrome est actuellement en cours d'exécution." 40 50 300 15
-::Text "Vous devez fermer Google Chrome avant de le nettoyer." 37 70 320 15
-::Text "Fermeture de Google Chrome" 103 10 175 15
-::#EndGui
-
-::#confirmkilledgewi
-::Window "Fermeture de Microsoft Edge" 392 210
-::icon "%jpath%\JaspRico.ico"
-::Button "backedge" "Non" 105 130 75 25
-::Button "cl_close" "Oui" 195 130 75 25
-::Text "Voulez-vous que JaspR ferme Microsoft Edge ?" 75 100 250 15
-::Text "Microsoft Edge est actuellement en cours d'exécution." 52 50 300 15
-::Text "Vous devez fermer Microsoft Edge avant de le nettoyer." 49 70 300 15
-::Text "Fermeture de Microsoft Edge" 115 10 200 15
-::#EndGui
-
-::#confirmkilliexplorewi
-::Window "Fermeture de Internet Explorer" 392 210
-::icon "%jpath%\JaspRico.ico"
-::Button "backiexplore" "Non" 105 130 75 25
-::Button "cl_close" "Oui" 195 130 75 25
-::Text "Voulez-vous que JaspR ferme Internet Explorer ?" 60 100 300 15
-::Text "Internet Explorer est actuellement en cours d'exécution." 42 50 300 15
-::Text "Vous devez fermer Internet Explorer avant de le nettoyer." 39 70 300 15
-::Text "Fermeture de Internet Explorer" 110 10 175 15
-::#EndGui
-
-::#confirmkillsafariwi
-::Window "Fermeture de Safari" 392 210
-::icon "%jpath%\JaspRico.ico"
-::Button "backsafari" "Non" 105 130 75 25
-::Button "cl_close" "Oui" 195 130 75 25
-::Text "Voulez-vous que JaspR ferme Safari ?" 90 100 250 15
-::Text "Safari est actuellement en cours d'exécution." 77 50 250 15
-::Text "Vous devez fermer Safari avant de le nettoyer." 74 70 300 15
-::Text "Fermeture de Safari" 140 10 150 15
-::#EndGui
-
-::#confirmkilloperawi
-::Window "Fermeture de Opera" 392 210
-::icon "%jpath%\JaspRico.ico"
-::Button "backopera" "Non" 105 130 75 25
-::Button "cl_close" "Oui" 195 130 75 25
-::Text "Voulez-vous que JaspR ferme Opera ?" 90 100 250 15
-::Text "Opera est actuellement en cours d'exécution." 77 50 250 15
-::Text "Vous devez fermer Opera avant de le nettoyer." 74 70 300 15
-::Text "Fermeture de Opera" 140 10 150 15
-::#EndGui
-
-
-
-::SANS ICONES
-
-::#cl_main
-::Window "JaspR" 450 420
-::Text "Sélectionnez les éléments que vous souhaitez nettoyer :" 10 20 350 15
-::checkbox "tempfiles" "Fichiers Temporaires" %tempbool% 20 70 180 25
-::checkbox "emptytrash" "Vider la Corbeille" %trashbool% 20 100 180 25
-::checkbox "recentfiles" "Liste des Fichiers Récents" %recentbool% 20 130 180 25
-::checkbox "logwindows" "Fichiers Journal de Windows" %winlogbool% 200 70 180 25
-::checkbox "thumbcache" "Cache des vignettes" %thumbbool% 200 100 180 25
-::checkbox "prefetch" "Vieilles données du prefetch" %prefetchbool% 200 130 180 25
-::checkbox "hiberstate" "Désactiver la mise en veille prolongée" %hiberbool% 20 160 250 25
-::Text "Navigateurs :" 20 220 75 15
-::radio "yes_clean_nav" "Oui" %yesnavbool% navch 100 215 50 25
-::radio "no_clean_nav" "Non" %nonavbool% navch 150 215 50 25
-::checkbox "cl_firefox" "Mozilla Firefox" %firefoxbool% 20 260 100 25
-::checkbox "cl_chrome" "Google Chrome" %chromebool% 150 260 110 25
-::checkbox "cl_edge" "Microsoft Edge" %edgebool% 280 260 100 25
-::checkbox "cl_iexplore" "Internet Explorer" %iexplorebool% 20 295 115 25
-::checkbox "cl_safari" "Safari" %safaribool% 150 295 100 25
-::checkbox "cl_opera" "Opera" %operabool% 280 295 100 25
-::Button "back" "Quitter" 75 340 75 25 Popup
-::Button "analyse" "Analyser" 178 340 75 25 Popup
-::Button "confirm_clean" "Nettoyer" 280 340 75 25 Popup
-::#EndGui
-
-::#confirmkillfirefox
-::Window "Fermeture de Firefox" 392 210
-::Button "backfirefox" "Non" 105 130 75 25
-::Button "cl_close" "Oui" 195 130 75 25
-::Text "Voulez-vous que JaspR ferme Firefox ?" 90 100 250 15
-::Text "Firefox est actuellement en cours d'exécution." 77 50 250 15
-::Text "Vous devez fermer Firefox avant de le nettoyer." 74 70 300 15
-::Text "Fermeture de Firefox" 140 10 150 15
-::#EndGui
-
-::#confirmkillchrome
-::Window "Fermeture de Google Chrome" 380 210
-::Button "backchrome" "Non" 105 130 75 25
-::Button "cl_close" "Oui" 195 130 75 25
-::Text "Voulez-vous que JaspR ferme Google Chrome ?" 50 100 300 15
-::Text "Google Chrome est actuellement en cours d'exécution." 40 50 300 15
-::Text "Vous devez fermer Google Chrome avant de le nettoyer." 37 70 320 15
-::Text "Fermeture de Google Chrome" 103 10 175 15
-::#EndGui
-
-::#confirmkilledge
-::Window "Fermeture de Microsoft Edge" 392 210
-::Button "backedge" "Non" 105 130 75 25
-::Button "cl_close" "Oui" 195 130 75 25
-::Text "Voulez-vous que JaspR ferme Microsoft Edge ?" 75 100 250 15
-::Text "Microsoft Edge est actuellement en cours d'exécution." 52 50 300 15
-::Text "Vous devez fermer Microsoft Edge avant de le nettoyer." 49 70 300 15
-::Text "Fermeture de Microsoft Edge" 115 10 200 15
-::#EndGui
-
-::#confirmkilliexplore
-::Window "Fermeture de Internet Explorer" 392 210
-::Button "backiexplore" "Non" 105 130 75 25
-::Button "cl_close" "Oui" 195 130 75 25
-::Text "Voulez-vous que JaspR ferme Internet Explorer ?" 60 100 300 15
-::Text "Internet Explorer est actuellement en cours d'exécution." 42 50 300 15
-::Text "Vous devez fermer Internet Explorer avant de le nettoyer." 39 70 300 15
-::Text "Fermeture de Internet Explorer" 110 10 175 15
-::#EndGui
-
-::#confirmkillsafari
-::Window "Fermeture de Safari" 392 210
-::Button "backsafari" "Non" 105 130 75 25
-::Button "cl_close" "Oui" 195 130 75 25
-::Text "Voulez-vous que JaspR ferme Safari ?" 90 100 250 15
-::Text "Safari est actuellement en cours d'exécution." 77 50 250 15
-::Text "Vous devez fermer Safari avant de le nettoyer." 74 70 300 15
-::Text "Fermeture de Safari" 140 10 150 15
-::#EndGui
-
-::#confirmkillopera
-::Window "Fermeture de Opera" 392 210
-::Button "backopera" "Non" 105 130 75 25
-::Button "cl_close" "Oui" 195 130 75 25
-::Text "Voulez-vous que JaspR ferme Opera ?" 90 100 250 15
-::Text "Opera est actuellement en cours d'exécution." 77 50 250 15
-::Text "Vous devez fermer Opera avant de le nettoyer." 74 70 300 15
-::Text "Fermeture de Opera" 140 10 150 15
-::#EndGui
 
 
 
