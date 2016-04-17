@@ -1,16 +1,23 @@
 WHAT'S NEW :
 
--Flexibility improvement : You can now rename the source code file (default is "JaspR [version].bat")
 
--Now JaspR uses his own subfolder under the local applications data's folder to store source code and icon.
+-Add Multi-Language Support (English and French, default is English)
 
--JaspR checks if AgrafV2 exists, if not, an error message appears.
+-Add Help
+
+-Version Checking
+
+-Dependencies checking and custom error messages.
 
 -JaspR stores user's choices in variables (so remembers which boxes user's ticked)
 
 -Suppression and analysis algorithm improvement
 
 -Narrowing of the source code (suppression and analysis' algorithm called as a function)
+
+-GUI called in external files (security with failsafe mode)
+
+-Many various improvements...
 
 ###################################################################################################
 
